@@ -1,15 +1,18 @@
+import streamlit as st
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.vectorstores import FAISS
-from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain.chains.retrieval_qa.base import RetrievalQA
+from langchain_community.embeddings.huggingface import HuggingFaceEmbeddings  # Updated import
+from langchain.chains import RetrievalQA
 from langchain_openai import ChatOpenAI
 from dotenv import load_dotenv
 import os
-import streamlit as st
 
 # Load environment variables
 load_dotenv()
 api_key = os.getenv("OPENAI_API_KEY")
+
+# Set environment variable to handle tokenizer warnings
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 # Check for API key before proceeding
 if not api_key:
@@ -22,7 +25,9 @@ if not api_key:
 @st.cache_resource
 def initialize_qa_chain():
     try:
-        pdfpath = "./CTP Project Design Doc.pdf"
+        # Get the absolute path to the PDF relative to the script
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        pdfpath = os.path.join(script_dir, "CTP Project Design Doc.pdf")
         
         # Check if PDF exists
         if not os.path.exists(pdfpath):
@@ -36,7 +41,10 @@ def initialize_qa_chain():
         pages = loader.load()
         
         # Create embeddings
-        embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L12-v2")
+        embeddings = HuggingFaceEmbeddings(
+            model_name="all-MiniLM-L12-v2",
+            model_kwargs={'device': 'cpu'}
+        )
         
         # Create vector store
         vectorstore = FAISS.from_documents(pages, embeddings)
@@ -44,7 +52,7 @@ def initialize_qa_chain():
         # Initialize ChatOpenAI with explicit API key
         llm = ChatOpenAI(
             temperature=0.7,
-            api_key=api_key,  # Explicitly pass the API key
+            api_key=api_key,
             model="gpt-3.5-turbo",
             max_tokens=100,
         )
@@ -98,7 +106,8 @@ if prompt:
         
         # Get response from QA chain with a spinner
         with st.spinner("Searching document for answer..."):
-            response = qa_chain.run(prompt)
+            # Updated to use invoke instead of run
+            response = qa_chain.invoke(prompt)
         
         # Display assistant response
         with st.chat_message("assistant"):
