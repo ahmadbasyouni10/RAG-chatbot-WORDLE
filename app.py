@@ -9,7 +9,7 @@ import os
 
 # Load environment variables
 load_dotenv()
-api_key = os.getenv("OPENAI_API_KEY")
+api_key = st.secrets["OPENAI_API_KEY"]
 
 # Set environment variable to handle tokenizer warnings
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -109,9 +109,10 @@ if prompt:
             # Updated to use invoke instead of run
             response = qa_chain.invoke(prompt)
         
+        result = response["result"]
         # Display assistant response
         with st.chat_message("assistant"):
-            st.markdown(response)
+            st.markdown(result)
         
         # Add assistant response to chat history
         st.session_state.messages.append({"role": "assistant", "content": response})
